@@ -1,88 +1,47 @@
 ﻿using Melior.InterviewQuestion.Data;
 using Melior.InterviewQuestion.Types;
+using Melior.InterviewQuestion.Validators;
 using System.Configuration;
 
 namespace Melior.InterviewQuestion.Services
 {
     public class PaymentService : IPaymentService
     {
+        private readonly IAccountDataStore _accountDataStore;
+        private readonly IAccountValidator _accountValidator;
+        private readonly IMakePaymentRequestValidator _requestValidator;
+
+
+        public PaymentService(
+            IAccountDataStore accountDataStore,
+            IAccountValidator accountValidator,
+            IMakePaymentRequestValidator requestValidator)
+        {
+            _accountDataStore = accountDataStore;
+            _accountValidator = accountValidator;
+            _requestValidator = requestValidator;
+        }
+
         public MakePaymentResult MakePayment(MakePaymentRequest request)
         {
-            var dataStoreType = ConfigurationManager.AppSettings["DataStoreType"];
 
-            Account account = null;
-
-            if (dataStoreType == "Backup")
+            var result = new MakePaymentResult();
+            //Check the account is valid and there is enough balance and the payment scheme is valid
+            if(!_requestValidator.IsValid(request))
             {
-                var accountDataStore = new BackupAccountDataStore();
-                account = accountDataStore.GetAccount(request.DebtorAccountNumber);
+                result.Success = false;
             }
             else
             {
-                var accountDataStore = new AccountDataStore();
-                account = accountDataStore.GetAccount(request.DebtorAccountNumber);
+                result.Success = true;
             }
-
-            var result = new MakePaymentResult();
-
-            switch (request.PaymentScheme)
-            {
-                case PaymentScheme.Bacs:
-                    if (account == null)
-                    {
-                        result.Success = false;
-                    }
-                    else if (!account.AllowedPaymentSchemes.HasFlag(AllowedPaymentSchemes.Bacs))
-                    {
-                        result.Success = false;
-                    }
-                    break;
-
-                case PaymentScheme.FasterPayments:
-                    if (account == null)
-                    {
-                        result.Success = false;
-                    }
-                    else if (!account.AllowedPaymentSchemes.HasFlag(AllowedPaymentSchemes.FasterPayments))
-                    {
-                        result.Success = false;
-                    }
-                    else if (account.Balance < request.Amount)
-                    {
-                        result.Success = false;
-                    }
-                    break;
-
-                case PaymentScheme.Chaps:
-                    if (account == null)
-                    {
-                        result.Success = false;
-                    }
-                    else if (!account.AllowedPaymentSchemes.HasFlag(AllowedPaymentSchemes.Chaps))
-                    {
-                        result.Success = false;
-                    }
-                    else if (account.Status != AccountStatus.Live)
-                    {
-                        result.Success = false;
-                    }
-                    break;
-            }
-
             if (result.Success)
             {
-                account.Balance -= request.Amount;
-
-                if (dataStoreType == "Backup")
-                {
-                    var accountDataStore = new BackupAccountDataStore();
-                    accountDataStore.UpdateAccount(account);
-                }
-                else
-                {
-                    var accountDataStore = new AccountDataStore();
-                    accountDataStore.UpdateAccount(account);
-                }
+                //Update the account balances and save to the database
+                request.DebtorAccount.Balance -= request.Amount;
+                request.CreditorAccount.Balance += request.Amount;
+                _accountDataStore.UpdateAccount(request.DebtorAccount);
+                _accountDataStore.UpdateAccount(request.CreditorAccount);
             }
 
             return result;

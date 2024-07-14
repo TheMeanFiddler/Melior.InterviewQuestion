@@ -1,17 +1,24 @@
-﻿using System;
+﻿using Melior.InterviewQuestion.PaymentSchemes;
+using System;
 
 namespace Melior.InterviewQuestion.Types
 {
+    /// <summary>
+    /// Rayment request that gets processed by the PaymentService
+    /// and validated by the MakePaymentRequestValidator
+    /// </summary>
     public class MakePaymentRequest
     {
-        public string CreditorAccountNumber { get; set; }
+        public Account CreditorAccount { get; set; }
 
-        public string DebtorAccountNumber { get; set; }
+        public Account DebtorAccount { get; set; }
 
         public decimal Amount { get; set; }
 
         public DateTime PaymentDate { get; set; }
 
-        public PaymentScheme PaymentScheme { get; set; }
+        public IPaymentScheme PaymentScheme { get; set; }
+
+
     }
 }
