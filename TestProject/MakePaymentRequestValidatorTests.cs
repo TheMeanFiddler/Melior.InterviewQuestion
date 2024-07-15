@@ -165,8 +165,6 @@ namespace TestProject
                 PaymentScheme = new FasterPayments()
             };
 
-            _accountValidatorMock.Setup(v => v.IsValid(It.IsAny<Account>())).Returns(true);
-            _accountValidatorMock.Setup(v => v.IsValid(It.Is<Account>(a => a.AccountNumber == "12345678"))).Returns(false);
 
             // Act
             var result = _validator.IsValid(request);
@@ -181,7 +179,6 @@ namespace TestProject
             // Arrange
             var request = new MakePaymentRequest
             {
-                DebtorAccount = new Account { AccountNumber = "12345678"},
                 CreditorAccount = new Account { AccountNumber = "87654321" },
                 Amount = 100,
                 PaymentScheme = new FasterPayments()
